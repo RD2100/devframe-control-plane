@@ -1,8 +1,8 @@
 project: devframe-control-plane
-current_stage: H3_paper_template_test
+current_stage: H4_archive_governance
 status: completed
-next_stage: H4_evidence_archive_governance
-next_stage_description: "Evidence archive governance policy — read-only, no cleanup"
+next_stage: H5_multi_pack_broader_testing
+next_stage_description: "Multi-pack broader real-chain testing — 2+ packs via CDP"
 blocked_items:
   guard_removal_approved: false
   evidence_cleanup_approved: false
