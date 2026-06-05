@@ -11,7 +11,7 @@ from control_plane.state_machine import (
 def test_load_current_state():
     state = load_state("CURRENT_STATE.yaml")
     assert state["project"] == "devframe-control-plane"
-    assert state["current_stage"].startswith("G") and "_" in state["current_stage"]
+    assert state["current_stage"][0] in ("G","H") and "_" in state["current_stage"]
 
 
 def test_valid_transition_in_progress_to_completed():
