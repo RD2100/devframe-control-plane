@@ -19,7 +19,7 @@ def test_generate_handoff_contains_required_sections():
 
 def test_generate_handoff_has_authorship_warning():
     text = generate_handoff("new-conversation")
-    assert "GPT WITH FULL CONTEXT" in text.upper() or "REVIEWED AND AUGMENTED" in text.upper()
+    assert "交接文档作者模型" in text or "完整上下文" in text
 
 
 def test_save_handoff_writes_file(tmp_path):
