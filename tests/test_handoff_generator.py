@@ -26,4 +26,4 @@ def test_save_handoff_writes_file(tmp_path):
     path = save_handoff(tmp_path / "test_handoff.md", "new-conversation")
     assert path.exists()
     content = path.read_text(encoding="utf-8")
-    assert "devframe-control-plane" in content
+    assert "HANDOFF — DevFrame Control Plane" in content
