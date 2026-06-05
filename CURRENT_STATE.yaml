@@ -1,9 +1,8 @@
 project: devframe-control-plane
-current_stage: G6_playwright_bridge
+current_stage: G8A_context_handoff_protocol
 status: completed
-feature_complete: true
-next_stage: G7_live_cdp_pilot
-next_stage_description: "Bounded live CDP pilot — real GPT submission with safety limits (separate authorization required)"
+next_stage: G8_bounded_gpt_review_pilot_design
+next_stage_description: "Bounded GPT review pilot — new clean conversation, 1 synthetic prompt, capture SHA256, parse judgment"
 blocked_items:
   guard_removal_approved: false
   evidence_cleanup_approved: false
