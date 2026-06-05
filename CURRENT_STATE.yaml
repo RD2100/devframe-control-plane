@@ -1,8 +1,8 @@
 project: devframe-control-plane
-current_stage: H4_archive_governance
+current_stage: H6_guard_retirement_design
 status: completed
 next_stage: H5_multi_pack_broader_testing
-next_stage_description: "Multi-pack broader real-chain testing — 2+ packs via CDP"
+next_stage_description: "Multi-pack broader real-chain testing — exactly 2 synthetic packs"
 blocked_items:
   guard_removal_approved: false
   evidence_cleanup_approved: false
