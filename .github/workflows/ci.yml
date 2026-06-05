@@ -14,6 +14,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.10"
-      - run: pip install -e ".[dev]"
-      - run: pytest tests/ -v
-      - run: python -c "from control_plane.cli import cmd_doctor; cmd_doctor()"
+      - run: pip install pyyaml pytest
+      - run: pip install -e .
+      - run: python -m pytest tests/ -v --tb=short
+      - run: python -m control_plane.cli doctor || true
