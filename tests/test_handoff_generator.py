@@ -13,7 +13,7 @@ def test_generate_handoff_returns_string():
 
 def test_generate_handoff_contains_required_sections():
     text = generate_handoff("new-conversation")
-    for section in ["Project Identity", "Architecture", "Safety Boundaries", "Expected Response"]:
+    for section in ["项目定位", "架构", "安全边界", "期望回复格式"]:
         assert section in text, f"Missing: {section}"
 
 
