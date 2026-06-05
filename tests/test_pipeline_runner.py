@@ -43,3 +43,13 @@ def test_dry_run_valid_pipeline():
 def test_dry_run_invalid_path():
     result = dry_run("nonexistent.yaml")
     assert result == 1
+
+
+def test_dry_run_with_submission():
+    result = dry_run("pipelines/example_pipeline.yaml", with_submission=True)
+    assert result == 0
+
+
+def test_dry_run_without_submission():
+    result = dry_run("pipelines/example_pipeline.yaml", with_submission=False)
+    assert result == 0

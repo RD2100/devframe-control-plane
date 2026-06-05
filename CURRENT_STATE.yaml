@@ -1,10 +1,8 @@
-# DevFrame Control Plane
 project: devframe-control-plane
-current_stage: G3_submission_adapter
+current_stage: G4_consolidated_integration
 status: completed
-started_at: "2026-06-05"
-next_stage: G4_pipeline_integration
-next_stage_description: "Integrate Runner + Adapter — pipeline stages trigger submission dry-runs"
+next_stage: G5_real_cdp_adapter
+next_stage_description: "Real CDP adapter — Playwright connect/upload/paste/send with dry-run fallback"
 blocked_items:
   guard_removal_approved: false
   evidence_cleanup_approved: false
