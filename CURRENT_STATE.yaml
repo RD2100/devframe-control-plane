@@ -1,0 +1,15 @@
+# DevFrame Control Plane — Current State
+# G0 Bootstrap Phase
+
+project: devframe-control-plane
+current_stage: G0_bootstrap
+status: initialized
+started_at: "2026-06-05"
+
+next_stage: G1_pipeline_schema_design
+next_stage_description: "Define YAML pipeline schema, state transition spec, and evidence spec. No Runner implementation."
+
+# No blocked items yet — project is in bootstrap phase
+blocked_items: {}
+
+# This file must not contain real secrets, keys, cookies, or private materials
