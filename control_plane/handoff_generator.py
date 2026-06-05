@@ -1,10 +1,9 @@
-"""Generate context handoff documents from project state.
+"""生成项目上下文交接文档。
 
-HANDOFF AUTHORSHIP MODEL (T3):
-- The generator provides the STRUCTURE (template with sections).
-- A GPT/Agent with full project context fills in the SUBSTANCE.
-- The generated file is a skeleton — it MUST be reviewed and augmented
-  by a GPT that has full session context before transfer to a new conversation.
+交接文档作者模型 (T3):
+- 生成器提供结构（模板骨架）。
+- 拥有完整项目上下文的 GPT/Agent 填充实质内容。
+- 生成的文件是骨架，必须在转交到新对话之前，由拥有完整会话上下文的 GPT 审核并补充。
 """
 from __future__ import annotations
 from pathlib import Path
@@ -15,53 +14,52 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 def generate_handoff(target: str = "new-conversation") -> str:
-    """Generate a HANDOFF.md skeleton. Must be reviewed by a GPT with full context before transfer."""
+    """生成 HANDOFF.md 骨架。必须在转交前由拥有完整上下文的 GPT 审核补充。"""
 
     lines = []
     lines.append("")
     lines.append("# HANDOFF — DevFrame Control Plane")
     lines.append("")
-    lines.append("> GENERATED SKELETON — MUST BE REVIEWED AND AUGMENTED BY GPT WITH FULL CONTEXT")
-    lines.append(f"> Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}")
-    lines.append(f"> Target: {target}")
+    lines.append("> 生成骨架 — 必须由拥有完整上下文的 GPT 审核并补充")
+    lines.append(f"> 生成时间: {datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}")
+    lines.append(f"> 目标: {target}")
     lines.append("")
-    lines.append("## IMPORTANT — Handoff Authorship Model")
+    lines.append("## 重要 — 交接文档作者模型")
     lines.append("")
-    lines.append("This template provides the STRUCTURE. The SUBSTANCE must be written by a GPT/Agent")
-    lines.append("that has full project context. Before transferring to a new conversation:")
+    lines.append("本模板提供结构。实质内容必须由拥有完整项目上下文的 GPT/Agent 编写。")
+    lines.append("在转交到新对话之前：")
     lines.append("")
-    lines.append("1. A GPT with full session context MUST fill in ALL sections below")
-    lines.append("2. The authoring GPT MUST include: project identity, architecture, completed phases,")
-    lines.append("   current state, safety boundaries, lessons learned, and next steps")
-    lines.append("3. Placeholders like `{{FIELD}}` must be replaced with actual content")
-    lines.append("4. The resulting HANDOFF.md should be 10,000+ characters of self-contained context")
-    lines.append("5. The transfer Agent MUST upload HANDOFF.md as a .md FILE ATTACHMENT (not inline text)")
+    lines.append("1. 拥有完整会话上下文的 GPT 必须填写以下全部章节")
+    lines.append("2. 作者 GPT 必须包含：项目定位、架构、已完成阶段、当前状态、安全边界、经验教训、下一步计划")
+    lines.append("3. `{{占位符}}` 必须替换为实际内容")
+    lines.append("4. 生成的 HANDOFF.md 应达到 10,000+ 字符的自包含上下文")
+    lines.append("5. 转交 Agent 必须以 .md 文件附件形式上传 HANDOFF.md（非内联文本粘贴）")
     lines.append("")
     lines.append("---")
     lines.append("")
-    lines.append("## 1. Project Identity")
-    lines.append("{{PROJECT_IDENTITY}}")
+    lines.append("## 1. 项目定位")
+    lines.append("{{项目定位}}")
     lines.append("")
-    lines.append("## 2. Architecture")
-    lines.append("{{ARCHITECTURE}}")
+    lines.append("## 2. 架构")
+    lines.append("{{架构}}")
     lines.append("")
-    lines.append("## 3. Completed Work")
-    lines.append("{{COMPLETED_PHASES}}")
+    lines.append("## 3. 已完成工作")
+    lines.append("{{已完成阶段}}")
     lines.append("")
-    lines.append("## 4. Current State")
-    lines.append("{{CURRENT_STATE}}")
+    lines.append("## 4. 当前状态")
+    lines.append("{{当前状态}}")
     lines.append("")
-    lines.append("## 5. Safety Boundaries")
-    lines.append("{{SAFETY_BOUNDARIES}}")
+    lines.append("## 5. 安全边界")
+    lines.append("{{安全边界}}")
     lines.append("")
-    lines.append("## 6. Key Decisions and Lessons Learned")
-    lines.append("{{LESSONS_LEARNED}}")
+    lines.append("## 6. 关键决策与经验教训")
+    lines.append("{{经验教训}}")
     lines.append("")
-    lines.append("## 7. Next Steps")
-    lines.append("{{NEXT_STEPS}}")
+    lines.append("## 7. 下一步计划")
+    lines.append("{{下一步}}")
     lines.append("")
-    lines.append("## 8. Expected Response Schema")
-    lines.append("```yaml")
+    lines.append("## 8. 期望回复格式")
+    lines.append("")
     lines.append("overall_judgment: accepted | blocked | review_unverified")
     lines.append("handoff_understood: yes | no")
     lines.append("project_identity_understood: yes | no")
@@ -71,16 +69,15 @@ def generate_handoff(target: str = "new-conversation") -> str:
     lines.append("safety_boundaries_understood: yes | no")
     lines.append("next_steps_understood: yes | no")
     lines.append("ready_for_next_authorization: yes | no")
-    lines.append("rationale: brief")
-    lines.append("```")
+    lines.append("rationale: 简述")
     lines.append("")
-    lines.append("## 9. Transfer Protocol (for Agent)")
+    lines.append("## 9. 转交协议（Agent 执行）")
     lines.append("")
-    lines.append("The Agent transferring this handoff MUST:")
-    lines.append("1. Upload HANDOFF.md as a .md FILE ATTACHMENT (not inline text paste)")
-    lines.append("2. Include a brief bootstrap prompt asking the new conversation to read the file")
-    lines.append("3. Capture the reply and verify handoff_understood=yes")
-    lines.append("4. Fail-closed if handoff_verified=false")
+    lines.append("转交 Agent 必须：")
+    lines.append("1. 以 .md 文件附件形式上传 HANDOFF.md（非内联文本粘贴）")
+    lines.append("2. 附带简要引导提示，要求新对话阅读该文件")
+    lines.append("3. 捕获回复并验证 handoff_understood=yes")
+    lines.append("4. 若 handoff_verified=false，必须 fail-closed")
     lines.append("")
 
     return "\n".join(lines)
