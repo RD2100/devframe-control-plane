@@ -1,8 +1,8 @@
 project: devframe-control-plane
-current_stage: G4_consolidated_integration
+current_stage: G5_cdp_adapter
 status: completed
-next_stage: G5_real_cdp_adapter
-next_stage_description: "Real CDP adapter — Playwright connect/upload/paste/send with dry-run fallback"
+next_stage: G6_playwright_bridge
+next_stage_description: "Playwright bridge — optional import, real CDP connect/upload/paste/send behind safety flag"
 blocked_items:
   guard_removal_approved: false
   evidence_cleanup_approved: false
