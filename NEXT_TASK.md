@@ -1,26 +1,21 @@
 # Next Task
 
-REVIEW_RUN_ID: g0-bootstrap-skeleton-v1-20260605
+REVIEW_RUN_ID: g1-schema-design-v1-20260605
 
-## G0 完成后
+## G1 完成后
 
-下一任务：**G1 — Pipeline Definition and State Machine Spec**
+下一任务：**G2 — Runner Skeleton**
 
-## G1 范围
+## G2 范围
 
-只设计 YAML pipeline schema，不实现 Runner。
+最小化 Pipeline Runner 骨架：
+- 解析 YAML pipeline 定义
+- 验证 schema
+- 干跑（dry-run）阶段序列
+- 不接入 CDP
 
-### G1 交付物
+## G2 禁止事项
 
-1. `schemas/pipeline.schema.json` — Pipeline 定义的 JSON Schema
-2. `schemas/state_transition.schema.json` — 状态转换的 JSON Schema
-3. `schemas/evidence_spec.schema.json` — 证据规格的 JSON Schema
-4. `docs/pipeline-spec.md` — Pipeline 规格说明文档
-5. 更新 `CURRENT_STATE.yaml` 为 G1_in_progress
-
-### G1 禁止事项
-
-- 不实现 `pipeline_runner.py`
-- 不实现 CDP / Playwright 接入
-- 不包含真实证据或用户数据
-- 不实现 CLI 命令
+- 不实现实际 CDP 提交
+- 不修改 CURRENT_ROUTE.json
+- 不含真实密钥或用户数据

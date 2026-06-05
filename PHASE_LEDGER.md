@@ -21,3 +21,11 @@ REVIEW_RUN_ID: g0-bootstrap-skeleton-v1-20260605
 - `G{n}` — Generation，大阶段（含多个 Task）
 - 阶段状态：`planned` → `in_progress` → `completed`
 - 每个阶段完成后必须更新 `CURRENT_STATE.yaml`
+
+## G1 — Pipeline Schema Design
+
+| 时间 | 状态 | 说明 |
+|------|------|------|
+| 2026-06-05 | planned | 定义 G1 交付物 |
+| 2026-06-05 | in_progress | 创建 3 schemas + pipeline-spec |
+| 2026-06-05 | completed | 所有 schema 文件 + spec 文档完成 |
