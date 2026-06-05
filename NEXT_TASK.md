@@ -1,21 +1,20 @@
 # Next Task
 
-REVIEW_RUN_ID: g1-schema-design-v1-20260605
+REVIEW_RUN_ID: g2-runner-auth-v1-20260605
 
-## G1 完成后
+## G2 完成后
 
-下一任务：**G2 — Runner Skeleton**
+下一任务：**G3 — Submission Adapter (CDP Wrapper)**
 
-## G2 范围
+## G3 范围
 
-最小化 Pipeline Runner 骨架：
-- 解析 YAML pipeline 定义
-- 验证 schema
-- 干跑（dry-run）阶段序列
-- 不接入 CDP
+- 封装 Playwright CDP 连接、ZIP 上传、prompt 粘贴、发送
+- 参数化 conversation ID、CDP host/port
+- 不实际提交到 GPT（dry-run 模式）
+- 不接入真实 Guard 或证据构建
 
-## G2 禁止事项
+## G3 禁止事项
 
-- 不实现实际 CDP 提交
+- 不实际发送到 GPT
 - 不修改 CURRENT_ROUTE.json
-- 不含真实密钥或用户数据
+- 不含真实密钥

@@ -1,13 +1,13 @@
 # DevFrame Control Plane — Current State
-# G1 Pipeline Schema Design
+# G2 Runner Skeleton
 
 project: devframe-control-plane
-current_stage: G1_pipeline_schema_design
+current_stage: G2_runner_skeleton
 status: completed
 started_at: "2026-06-05"
 
-next_stage: G2_runner_skeleton
-next_stage_description: "Minimal Pipeline Runner skeleton — parse YAML, validate schema, dry-run stage sequence. No CDP."
+next_stage: G3_submission_adapter
+next_stage_description: "CDP submission adapter — wrap Playwright connect, upload, paste, send. No real GPT submission."
 
 blocked_items:
   guard_removal_approved: false
