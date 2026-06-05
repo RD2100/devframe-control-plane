@@ -50,15 +50,58 @@ def cmd_run(pipeline_path: str, dry_run: bool = True, with_submission: bool = Fa
     return runner_dry_run(pipeline_path, with_submission=with_submission)
 
 
+def cmd_handoff_generate(target: str = "new-conversation"):
+    from .handoff_generator import generate_handoff
+    print(generate_handoff(target))
+    return 0
+
+
+def cmd_handoff_validate(path: str):
+    from .handoff_verifier import validate_handoff
+    text = Path(path).read_text(encoding="utf-8")
+    ok, errors = validate_handoff(text)
+    if ok:
+        print("Handoff validation: PASSED")
+        return 0
+    for e in errors:
+        print(f"  FAIL: {e}")
+    return 1
+
+
+def cmd_handoff_bootstrap(target: str = "new-conversation", dry_run: bool = True):
+    from .conversation_bootstrap import run_bootstrap
+    result = run_bootstrap(target, dry_run=dry_run)
+    print(f"Mode: {result.mode}")
+    print(f"Handoff generated: {result.handoff_generated} ({result.handoff_length} chars)")
+    print(f"Submitted: {result.submitted}")
+    print(f"Reply received: {result.reply_received}")
+    print(f"Handoff verified: {result.handoff_verified}")
+    return 0 if result.handoff_verified else 1
+
+
 def main():
     if len(sys.argv) < 2:
         print("DevFrame Control Plane CLI")
         print("  devframe init [template] [target]  — initialize project")
         print("  devframe doctor                    — check project health")
         print("  devframe run --pipeline <path>     — dry-run pipeline")
+        print("  devframe handoff generate           — generate handoff doc")
+        print("  devframe handoff validate <file>    — validate handoff")
+        print("  devframe handoff bootstrap          — dry-run bootstrap")
         return 0
     cmd = sys.argv[1]
-    if cmd == "init":
+    if cmd == "handoff":
+        sub = sys.argv[2] if len(sys.argv) > 2 else "generate"
+        if sub == "generate":
+            return cmd_handoff_generate()
+        elif sub == "validate":
+            return cmd_handoff_validate(sys.argv[3]) if len(sys.argv) > 3 else 1
+        elif sub == "bootstrap":
+            return cmd_handoff_bootstrap()
+        else:
+            print(f"Unknown handoff subcommand: {sub}")
+            return 1
+    elif cmd == "init":
         tpl = sys.argv[2] if len(sys.argv) > 2 else "code_project"
         tgt = sys.argv[3] if len(sys.argv) > 3 else "."
         return cmd_init(tpl, tgt)

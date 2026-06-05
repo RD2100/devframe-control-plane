@@ -1,10 +1,8 @@
 project: devframe-control-plane
-current_stage: RELEASE_v0.1.0
-status: release-candidate
-feature_complete: true
-release_ready: true
-h5_deferred_optional: true
-next: "Post-release hardening (new conversation recommended)"
+current_stage: T1_context_sync
+status: completed
+next_stage: T2_live_bootstrap
+next_stage_description: "Live CDP bootstrap — real new conversation creation via CDP"
 blocked_items:
   guard_removal_approved: false
   evidence_cleanup_approved: false
