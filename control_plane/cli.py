@@ -88,6 +88,7 @@ def main():
         print("  devframe handoff generate           — generate handoff doc")
         print("  devframe handoff validate <file>    — validate handoff")
         print("  devframe handoff bootstrap          — dry-run bootstrap")
+        print("  devframe handoff transfer --to <url> — transfer handoff as file attachment")
         return 0
     cmd = sys.argv[1]
     if cmd == "handoff":
@@ -98,6 +99,17 @@ def main():
             return cmd_handoff_validate(sys.argv[3]) if len(sys.argv) > 3 else 1
         elif sub == "bootstrap":
             return cmd_handoff_bootstrap()
+        elif sub == "transfer":
+            # dry-run by default — prints what would happen
+            to_url = sys.argv[3] if len(sys.argv) > 3 else "new-conversation"
+            print(f"Handoff transfer (dry-run): would upload HANDOFF.md to {to_url}")
+            print("  Step 1: Verify HANDOFF.md exists")
+            print("  Step 2: CDP connect and navigate to target")
+            print("  Step 3: Upload HANDOFF.md as .md file attachment")
+            print("  Step 4: Include bootstrap prompt")
+            print("  Step 5: Click send")
+            print("  Step 6: Capture reply and verify handoff_verified")
+            return 0
         else:
             print(f"Unknown handoff subcommand: {sub}")
             return 1
