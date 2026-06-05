@@ -1,9 +1,8 @@
 project: devframe-control-plane
-current_stage: H1_productization
+current_stage: H2_integration_design
 status: completed
-productized: true
-next_stage: H2_devframe_opencode_integration
-next_stage_description: "Integrate control-plane as the pipeline driver for dev-frame-opencode"
+next_stage: H3_paper_iteration_live_test
+next_stage_description: "Paper iteration template live testing with synthetic paper content"
 blocked_items:
   guard_removal_approved: false
   evidence_cleanup_approved: false
