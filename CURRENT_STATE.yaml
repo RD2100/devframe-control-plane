@@ -1,8 +1,8 @@
 project: devframe-control-plane
-current_stage: H2_integration_design
+current_stage: H3_paper_template_test
 status: completed
-next_stage: H3_paper_iteration_live_test
-next_stage_description: "Paper iteration template live testing with synthetic paper content"
+next_stage: H4_evidence_archive_governance
+next_stage_description: "Evidence archive governance policy — read-only, no cleanup"
 blocked_items:
   guard_removal_approved: false
   evidence_cleanup_approved: false
