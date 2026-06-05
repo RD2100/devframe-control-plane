@@ -1,8 +1,9 @@
 project: devframe-control-plane
-current_stage: G5_cdp_adapter
+current_stage: G6_playwright_bridge
 status: completed
-next_stage: G6_playwright_bridge
-next_stage_description: "Playwright bridge — optional import, real CDP connect/upload/paste/send behind safety flag"
+feature_complete: true
+next_stage: G7_live_cdp_pilot
+next_stage_description: "Bounded live CDP pilot — real GPT submission with safety limits (separate authorization required)"
 blocked_items:
   guard_removal_approved: false
   evidence_cleanup_approved: false
