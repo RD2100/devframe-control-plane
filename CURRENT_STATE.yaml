@@ -3,7 +3,7 @@
 
 project: devframe-control-plane
 current_stage: G1_pipeline_schema_design
-status: in_progress
+status: completed
 started_at: "2026-06-05"
 
 next_stage: G2_runner_skeleton
