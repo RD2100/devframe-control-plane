@@ -1,8 +1,10 @@
 project: devframe-control-plane
-current_stage: H6_guard_retirement_design
-status: completed
-next_stage: H5_multi_pack_broader_testing
-next_stage_description: "Multi-pack broader real-chain testing — exactly 2 synthetic packs"
+current_stage: RELEASE_v0.1.0
+status: release-candidate
+feature_complete: true
+release_ready: true
+h5_deferred_optional: true
+next: "Post-release hardening (new conversation recommended)"
 blocked_items:
   guard_removal_approved: false
   evidence_cleanup_approved: false
