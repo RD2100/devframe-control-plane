@@ -1,8 +1,9 @@
 project: devframe-control-plane
-current_stage: G8A_context_handoff_protocol
+current_stage: H1_productization
 status: completed
-next_stage: G8_bounded_gpt_review_pilot_design
-next_stage_description: "Bounded GPT review pilot — new clean conversation, 1 synthetic prompt, capture SHA256, parse judgment"
+productized: true
+next_stage: H2_devframe_opencode_integration
+next_stage_description: "Integrate control-plane as the pipeline driver for dev-frame-opencode"
 blocked_items:
   guard_removal_approved: false
   evidence_cleanup_approved: false
