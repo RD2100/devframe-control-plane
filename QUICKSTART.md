@@ -1,68 +1,74 @@
-# Quickstart（设计版）
+# Quickstart
 
-> 当前 G0 阶段，下方命令为设计预览，不可真实运行。G1 完成后逐步实现。
-
-## 用户流程
-
-### 1. 获取仓库
+## 1. 获取仓库并安装
 
 ```bash
 git clone https://github.com/RD2100/devframe-control-plane.git
 cd devframe-control-plane
+
+# Windows
+python -m venv .venv
+.venv\Scripts\activate
+
+# Linux / macOS
+python -m venv .venv
+source .venv/bin/activate
+
+pip install -e .
 ```
 
-### 2. 选择模板
+## 2. Doctor 检查
 
 ```bash
-# 列出可用模板
-python -m control_plane templates list
-
-# 当前可用：
-#   code_project      — 软件工程项目流水线
-#   paper_iteration   — 论文迭代审查流水线
+devframe doctor
 ```
 
-### 3. 生成项目骨架
+预期输出: `Doctor: 9/9 checks passed`
+
+## 3. 基于模板初始化项目
 
 ```bash
-# 基于模板创建新项目
-python -m control_plane init --template code_project my-project
-
-# 生成内容：
-#   my-project/
-#     PROJECT_BOOTSTRAP.md
-#     CURRENT_STATE.yaml
-#     NEXT_TASK.md
-#     SAFETY_BOUNDARIES.md
-#     PIPELINE.yaml
-#     EVIDENCE_SPEC.yaml
-#     .gitignore
-#     .env.example
+devframe init code_project my-project
 ```
 
-### 4. Doctor 检查
+生成内容：
+```
+my-project/
+  PROJECT_BOOTSTRAP.md
+  CURRENT_STATE.yaml
+  NEXT_TASK.md
+  SAFETY_BOUNDARIES.md
+  PIPELINE.yaml
+  EVIDENCE_SPEC.yaml
+  .gitignore
+  .env.example
+```
+
+## 4. 运行流水线（dry-run）
 
 ```bash
 cd my-project
-python -m control_plane doctor
-
-# 检查项：
-#   - 所有必需文件存在
-#   - CURRENT_STATE.yaml 格式正确
-#   - SAFETY_BOUNDARIES.md 覆盖必要条目
-#   - .gitignore 排除敏感文件
-#   - .env 未包含真实值（如有）
-#   - 无 CDP / Playwright 代码（当前阶段）
+devframe run --pipeline PIPELINE.yaml
 ```
 
-### 5. 运行工作流（未来）
+当前 runner 执行 dry-run：解析流水线、验证结构、打印阶段序列，不改变状态。
+
+## 5. Context Handoff（跨会话交接）
 
 ```bash
-python -m control_plane run PIPELINE.yaml --mode execute
+# 生成交接文档骨架（GPT/Agent 填充实质内容）
+devframe handoff generate
+
+# 验证交接文档
+devframe handoff validate HANDOFF.md
+
+# 干运行交接传输（文件附件协议，不实际发送）
+devframe handoff transfer --to https://chatgpt.com/c/<conversation-id>
+
+# 干运行新对话 bootstrap
+devframe handoff bootstrap
 ```
 
-## 当前限制
+## live CDP / GPT 提交
 
-- 所有命令为设计预览，不可执行
-- Runner 将在 G2+ 实现
-- CDP 接入将在 G3+ 实现
+live CDP 执行和 GPT 提交默认禁用。需要单独授权并显式指定安全标志后才可启用。普通 quickstart 不涉及 live CDP。
