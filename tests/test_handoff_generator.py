@@ -2,7 +2,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from control_plane.handoff_generator import generate_handoff, save_handoff, load_state
+from control_plane.handoff_generator import generate_handoff, save_handoff
 
 
 def test_generate_handoff_returns_string():
@@ -13,14 +13,13 @@ def test_generate_handoff_returns_string():
 
 def test_generate_handoff_contains_required_sections():
     text = generate_handoff("new-conversation")
-    for section in ["Project Identity", "Current Status", "Safety Boundaries", "Failure Policy"]:
+    for section in ["Project Identity", "Architecture", "Safety Boundaries", "Expected Response"]:
         assert section in text, f"Missing: {section}"
 
 
-def test_load_state_returns_dict():
-    state = load_state()
-    assert isinstance(state, dict)
-    assert "project" in state
+def test_generate_handoff_has_authorship_warning():
+    text = generate_handoff("new-conversation")
+    assert "GPT WITH FULL CONTEXT" in text.upper() or "REVIEWED AND AUGMENTED" in text.upper()
 
 
 def test_save_handoff_writes_file(tmp_path):
