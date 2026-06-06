@@ -180,13 +180,16 @@ def cmd_pack_validate(zip_path: str):
             if not extra_in_zip and not extra_in_manifest:
                 print(f"  PASS: Manifest <-> ZIP bidirectional match ({len(manifest_files)} files)")
 
-            # Check summary-only
-            actual_content_files = [f for f in namelist if f.endswith((".md", ".yaml", ".json", ".txt")) and f not in ("PACK_MANIFEST.md", "GPT_REVIEW_PROMPT.md", "SAFETY_ATTESTATION.md", "CLOSURE_REPORT.yaml", "FLOW_OUTCOME.json")]
-            if len(actual_content_files) < 2:
-                print("  FAIL: Evidence pack appears summary-only (no actual deliverable files)")
+            # Check summary-only (A1 patterns)
+            SUMMARY_FILES = {"GPT_REVIEW_PROMPT.md","CLOSURE_REPORT.md","CLOSURE_REPORT.yaml","SAFETY_ATTESTATION.md","PACK_MANIFEST.md","WORKFLOW_CLOSURE_VALIDATION.yaml"}
+            VERIFY_FILES = {"TEST_OUTPUT.txt","BYPASS_CHECK_OUTPUT.txt","GATE_OUTPUT.txt","DOCTOR_OUTPUT.txt"}
+            ACTUAL_PATTERNS = ["contracts/","schemas/","docs/","templates/","scripts/","tests/","pipelines/","examples/","review/","input/","closure/","submission/","control_plane/","diff.patch"]
+            actual_deliverables = [f for f in namelist if f not in SUMMARY_FILES and f not in VERIFY_FILES and any(f.startswith(p.rstrip('/')) or p.rstrip('/') in f for p in ACTUAL_PATTERNS)]
+            if len(actual_deliverables) == 0:
+                print("  FAIL: Evidence pack is summary-only (no actual deliverables per A1 patterns)")
                 errors += 1
             else:
-                print(f"  PASS: Contains {len(actual_content_files)} actual deliverable files")
+                print(f"  PASS: Contains {len(actual_deliverables)} actual deliverable files (A1 patterns)")
 
     # SD-01/02/03 enforcement: call agent-acceptance validator
     validator_script = ROOT.parent / "agent-acceptance" / "scripts" / "validate_workflow_closure.py"
@@ -202,7 +205,8 @@ def cmd_pack_validate(zip_path: str):
             errors += 1
             print(f"  FAIL: Workflow closure validation failed (SD-01/02/03 check)")
     else:
-        print(f"  SKIPPED: agent-acceptance validator not found")
+        print(f"  FAIL: agent-acceptance validator not found — cannot verify SD-01/02/03")
+        errors += 1
 
     if errors > 0:
         print(f"Pack validation: FAILED ({errors} errors)")
