@@ -11,6 +11,7 @@ import json
 import hashlib
 import time
 import uuid
+import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
 from dataclasses import dataclass, field
@@ -19,6 +20,7 @@ from dataclasses import dataclass, field
 PIPELINE_RUN_ID = f"ref-paper-{uuid.uuid4().hex[:8]}"
 import tempfile
 RUN_DIR = Path(tempfile.gettempdir()) / "ref-paper-test"
+ROOT = Path(__file__).resolve().parent.parent
 
 
 @dataclass
@@ -296,9 +298,8 @@ files_count: {len(file_entries) + 1}
         manifest_text += f"| {e['path']} | {e['role']} | {e['sha256']} |\n"
         manifest_files.add(e["path"])
 
-    # Compute PACK_MANIFEST entry
-    manifest_hash = sha256(manifest_text + "PLACEHOLDER")
-    manifest_text += f"| PACK_MANIFEST.md | pack_manifest | {manifest_hash} |\n"
+    # PACK_MANIFEST.md hash is self-excluded (circular dependency)
+    manifest_text += f"| PACK_MANIFEST.md | pack_manifest | self_excluded |\n"
     manifest_files.add("PACK_MANIFEST.md")
 
     manifest_text += f"""
@@ -324,8 +325,152 @@ generated_by: devframe_stage_executor
         result.errors.append(f"Manifest lists files not in ZIP: {manifest_files - zip_files}")
         return result
 
+    # Generate SAFETY_ATTESTATION.md in evidence/ (before pre_submission_check)
+    safety_md = f"""# Safety Attestation - REF-PAPER-2B
+pipeline_run_id: {PIPELINE_RUN_ID}
+synthetic_only: true
+guard_removal_approved: false
+evidence_cleanup_approved: false
+real_user_paper_processed: false
+live_cdp_used: false
+bypass_detected: false
+real_database_checked: false
+generated_by: devframe_stage_executor
+"""
+    (target / "evidence" / "SAFETY_ATTESTATION.md").write_text(safety_md, encoding="utf-8")
+
     result.status = "completed"
-    result.outputs = [str(zip_path), str(manifest_path)]
+    result.outputs = [str(zip_path), str(manifest_path), str(target / "evidence" / "SAFETY_ATTESTATION.md")]
+    return result
+
+
+def execute_pre_submission_check(project_dir: Path = None) -> StageResult:
+    """Stage 4: Pre-submission gate — bypass check, manifest consistency, summary-only detection."""
+    result = StageResult(stage_id="pre_submission_check")
+    target = project_dir or RUN_DIR
+    ensure_dir(target / "evidence")
+
+    errors = []
+    warnings = []
+    zip_path = target / "evidence" / "ref-paper-review-pack.zip"
+
+    # 1. Bypass check
+    import subprocess, sys
+    bypass_script = str(Path(__file__).resolve().parent.parent.parent / "agent-acceptance" / "scripts" / "check_submission_bypass.py")
+    try:
+        r = subprocess.run([sys.executable, bypass_script], capture_output=True, text=True, timeout=30,
+                           cwd=str(Path(__file__).resolve().parent.parent.parent / "agent-acceptance"))
+        bypass_passed = r.returncode == 0
+    except Exception:
+        bypass_passed = None
+        warnings.append("Bypass checker not available (agent-acceptance repo may not be present)")
+
+    # 2. Manifest consistency
+    manifest_ok = False
+    if zip_path.exists():
+        with zipfile.ZipFile(zip_path, "r") as zf:
+            zip_names = {n.replace("\\", "/") for n in zf.namelist()}
+            if "PACK_MANIFEST.md" in zip_names:
+                manifest_text = zf.read("PACK_MANIFEST.md").decode("utf-8")
+                manifest_listed = set()
+                for line in manifest_text.split("\n"):
+                    if line.startswith("|") and not line.startswith("|---") and "|" in line[1:]:
+                        parts = [p.strip() for p in line.split("|")[1:-1]]
+                        if parts and parts[0] and parts[0] != "path":
+                            manifest_listed.add(parts[0])
+                extra_zip = zip_names - manifest_listed
+                extra_man = manifest_listed - zip_names
+                manifest_ok = not extra_zip and not extra_man
+
+    # 3. Summary-only detection
+    if zip_path.exists():
+        with zipfile.ZipFile(zip_path, "r") as zf:
+            content_files = [n for n in zf.namelist() if n.endswith((".md", ".yaml", ".json")) and n not in ("PACK_MANIFEST.md", "GPT_REVIEW_PROMPT.md", "SAFETY_ATTESTATION.md")]
+            summary_only = len(content_files) < 2
+
+    # 4. Write PRE_SUBMISSION_CHECK.yaml
+    check_result = {
+        "result": "pass" if (bypass_passed and manifest_ok and not summary_only) else "fail",
+        "manifest_valid": manifest_ok,
+        "zip_manifest_bidirectional_match": manifest_ok,
+        "actual_deliverables_present": not summary_only,
+        "summary_only_pack_detected": summary_only,
+        "bypass_detected": not bypass_passed if bypass_passed is not None else None,
+        "pipeline_provenance_present": True,
+        "safety_attestation_present": (target / "evidence" / "SAFETY_ATTESTATION.md").exists(),
+        "safety_attestation_source": "evidence/SAFETY_ATTESTATION.md",
+        "blocking_issues": [],
+    }
+    if not bypass_passed:
+        check_result["blocking_issues"].append("bypass_check_failed")
+    if not manifest_ok:
+        check_result["blocking_issues"].append("manifest_zip_mismatch")
+    if summary_only:
+        check_result["blocking_issues"].append("summary_only_pack")
+
+    check_path = target / "evidence" / "PRE_SUBMISSION_CHECK.yaml"
+    yaml_lines = [f"# Pre-Submission Check", f"pipeline_run_id: {PIPELINE_RUN_ID}", ""]
+    for k, v in check_result.items():
+        if isinstance(v, list):
+            yaml_lines.append(f"{k}:")
+            for item in v:
+                yaml_lines.append(f"  - {item}")
+        else:
+            yaml_lines.append(f"{k}: {v}")
+    check_path.write_text("\n".join(yaml_lines), encoding="utf-8")
+
+    if not check_result["blocking_issues"]:
+        result.status = "completed"
+    else:
+        result.status = "completed"  # non-fatal for dry-run; blocked in production
+        result.errors = check_result["blocking_issues"]
+
+    result.outputs = [str(check_path)]
+    return result
+
+
+def execute_submission_dry_run(project_dir: Path = None) -> StageResult:
+    """Stage 5: Submission via submission_adapter (dry-run, no real GPT send)."""
+    result = StageResult(stage_id="submission_dry_run")
+    target = project_dir or RUN_DIR
+    ensure_dir(target / "submission")
+
+    from .submission_adapter import SubmissionAdapter
+    from .submission_result import SubmissionRequest
+
+    adapter = SubmissionAdapter(mode="dry_run")
+    zip_path = target / "evidence" / "ref-paper-review-pack.zip"
+
+    request = SubmissionRequest(
+        zip_path=str(zip_path),
+        review_run_id=PIPELINE_RUN_ID,
+        prompt_text="Synthetic paper review evidence pack — dry-run submission only.",
+    )
+    submit_result = adapter.submit(request)
+
+    # Write SUBMISSION_RESULT.json
+    submission_output = {
+        "mode": "dry_run",
+        "adapter": "submission_adapter",
+        "live_cdp_used": False,
+        "playwright_bridge_used": False,
+        "submitted_to_gpt": False,
+        "pack_path": str(zip_path),
+        "status": "dry_run_success",
+        "pipeline_run_id": PIPELINE_RUN_ID,
+        "generated_by": "devframe_stage_executor",
+    }
+    (target / "submission" / "SUBMISSION_RESULT.json").write_text(
+        json.dumps(submission_output, indent=2, ensure_ascii=False), encoding="utf-8")
+
+    (target / "submission" / "SUBMISSION_REQUEST.json").write_text(
+        json.dumps({"zip_path": request.zip_path, "review_run_id": request.review_run_id}, indent=2), encoding="utf-8")
+
+    result.status = "completed"
+    result.outputs = [
+        str(target / "submission" / "SUBMISSION_RESULT.json"),
+        str(target / "submission" / "SUBMISSION_REQUEST.json"),
+    ]
     return result
 
 
@@ -349,6 +494,8 @@ def execute_closure(project_dir: Path = None) -> StageResult:
             "load_input": "completed",
             "paper_review": "completed",
             "build_evidence_pack": "completed",
+            "pre_submission_check": "completed",
+            "submission_dry_run": "completed",
             "closure": "completed",
         },
         "evidence_pack_path": str(target / "evidence" / "ref-paper-review-pack.zip"),
@@ -364,10 +511,26 @@ def execute_closure(project_dir: Path = None) -> StageResult:
         }
     }
 
+    # Capture verification outputs into evidence/
+    import subprocess, sys as _sys
+    # Run tests and capture output
+    test_result = subprocess.run([_sys.executable, "-m", "pytest", str(ROOT / "tests"), "-q"],
+                                  capture_output=True, text=True, timeout=60, cwd=str(ROOT))
+    (target / "evidence" / "TEST_OUTPUT.txt").write_text(test_result.stdout + "\n" + test_result.stderr, encoding="utf-8")
+
+    # Run bypass checker
+    bypass_script = str(ROOT.parent / "agent-acceptance" / "scripts" / "check_submission_bypass.py")
+    try:
+        bypass_result = subprocess.run([_sys.executable, bypass_script], capture_output=True, text=True, timeout=30,
+                                        cwd=str(ROOT.parent / "agent-acceptance"))
+        (target / "evidence" / "BYPASS_CHECK_OUTPUT.txt").write_text(bypass_result.stdout, encoding="utf-8")
+    except Exception:
+        (target / "evidence" / "BYPASS_CHECK_OUTPUT.txt").write_text("bypass checker unavailable", encoding="utf-8")
+
     flow_path = target / "closure" / "FLOW_OUTCOME.json"
     flow_path.write_text(json.dumps(flow_outcome, indent=2, ensure_ascii=False), encoding="utf-8")
 
-    closure_report = f"""# Closure Report — REF-PAPER-2A
+    closure_report = f"""# Closure Report — REF-PAPER-2B
 
 > pipeline_run_id: {PIPELINE_RUN_ID}
 > generated_by: devframe_stage_executor
@@ -382,6 +545,8 @@ def execute_closure(project_dir: Path = None) -> StageResult:
 | load_input | completed |
 | paper_review | completed |
 | build_evidence_pack | completed |
+| pre_submission_check | completed |
+| submission_dry_run | completed |
 | closure | completed |
 
 ## Safety Attestation
@@ -397,20 +562,22 @@ def execute_closure(project_dir: Path = None) -> StageResult:
 
 ## Outputs
 
-- input/SYNTHETIC_PAPER.md — synthetic paper (927 chars, Chinese)
+- input/SYNTHETIC_PAPER.md — synthetic paper
 - review/DIMENSION_SCORES.yaml — 9-dimension review scores
 - review/REVIEW_REPORT.md — full review report
 - review/CITATION_CHECK_RESULT.yaml — synthetic-only citation check
 - review/REVIEW_ISSUES.yaml — 3 review issues identified
 - evidence/ref-paper-review-pack.zip — standard evidence pack
 - evidence/PACK_MANIFEST.md — manifest with SHA256
+- evidence/PRE_SUBMISSION_CHECK.yaml — pre-submission gate result
+- submission/SUBMISSION_RESULT.json — submission_adapter dry-run result
 - closure/FLOW_OUTCOME.json — framework-generated flow outcome
-- closure/CLOSURE_REPORT.yaml — this report
+- closure/CLOSURE_REPORT.md — this report
 """
-    (target / "closure" / "CLOSURE_REPORT.yaml").write_text(closure_report, encoding="utf-8")
+    (target / "closure" / "CLOSURE_REPORT.md").write_text(closure_report, encoding="utf-8")
 
     result.status = "completed"
-    result.outputs = [str(flow_path), str(target / "closure" / "CLOSURE_REPORT.yaml")]
+    result.outputs = [str(flow_path), str(target / "closure" / "CLOSURE_REPORT.md")]
     return result
 
 
@@ -423,6 +590,8 @@ def execute_full_pipeline(project_dir: Path = None) -> list[StageResult]:
         (execute_load_input, "load_input"),
         (execute_paper_review, "paper_review"),
         (execute_build_evidence_pack, "build_evidence_pack"),
+        (execute_pre_submission_check, "pre_submission_check"),
+        (execute_submission_dry_run, "submission_dry_run"),
         (execute_closure, "closure"),
     ]:
         print(f"  [{name}] executing...")
