@@ -1,6 +1,16 @@
-# DevFrame Control Plane
+# DevFrame Control Plane — 项目入口
 
-DevFrame Control Plane 是 dev-frame-opencode 生态的工作流控制平面，用声明式 pipeline、runner、state machine、evidence pack、submission/CDP adapter、CLI 和 context handoff protocol，把多阶段 Agent/GPT 工作流变成可冷启动、可迁移、可审核、可交接的 evidence-first 框架。
+> **Agent 冷启动：请按顺序读取以下文件。读完即可无缝接手，无需聊天记录。**
+>
+> 1. `PROJECT_HISTORY.md` — 控制平面项目生存文档（完整阶段历史、架构、经验、当前状态）
+> 2. `D:\agent-acceptance\PROJECT_HISTORY.md` — 规范验收层项目生存文档
+> 3. `D:\agent-acceptance\HANDOFF_V5.md` — 当前交接快照（上一个 GPT 生成的最新上下文）
+>
+> 三份文档覆盖三层架构：控制平面 + 规范验收 + 执行层。读完后按 `../../agent-acceptance/CLAUDE.md` 中的协议工作。
+
+---
+
+DevFrame Control Plane 是 DevFrame 三层工作流治理体系的**整合入口**，用声明式 pipeline、runner、state machine、evidence pack、submission/CDP adapter、CLI 和 context handoff protocol，把多阶段 Agent/GPT 工作流变成可冷启动、可迁移、可审核、可交接的 evidence-first 框架。
 
 ## 当前状态
 
