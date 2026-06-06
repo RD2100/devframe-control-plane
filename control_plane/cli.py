@@ -188,6 +188,22 @@ def cmd_pack_validate(zip_path: str):
             else:
                 print(f"  PASS: Contains {len(actual_content_files)} actual deliverable files")
 
+    # SD-01/02/03 enforcement: call agent-acceptance validator
+    validator_script = ROOT.parent / "agent-acceptance" / "scripts" / "validate_workflow_closure.py"
+    if validator_script.exists():
+        import subprocess
+        print(f"  Running workflow closure validator...")
+        result = subprocess.run(
+            [sys.executable, str(validator_script), str(zp)],
+            capture_output=True, text=True, timeout=30,
+        )
+        print(f"  {result.stdout.strip()}")
+        if result.returncode != 0:
+            errors += 1
+            print(f"  FAIL: Workflow closure validation failed (SD-01/02/03 check)")
+    else:
+        print(f"  SKIPPED: agent-acceptance validator not found")
+
     if errors > 0:
         print(f"Pack validation: FAILED ({errors} errors)")
         return 1
