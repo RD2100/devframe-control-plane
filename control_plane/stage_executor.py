@@ -420,6 +420,28 @@ def execute_pre_submission_check(project_dir: Path = None) -> StageResult:
             yaml_lines.append(f"{k}: {v}")
     check_path.write_text("\n".join(yaml_lines), encoding="utf-8")
 
+    # 4.5 Rebuild evidence pack to include any post-build files + fix manifest
+    if zip_path.exists():
+        tmp_zp = zip_path.with_suffix(".rebuild.zip")
+        old = {}
+        with zipfile.ZipFile(str(zip_path), "r") as zf:
+            for n in zf.namelist():
+                if n != "PACK_MANIFEST.md": old[n] = zf.read(n)
+        with zipfile.ZipFile(str(tmp_zp), "w", zipfile.ZIP_DEFLATED) as zf:
+            for n, c in old.items(): zf.writestr(n, c)
+        ents = []
+        with zipfile.ZipFile(str(tmp_zp), "r") as zf:
+            for fn in sorted(zf.namelist()):
+                if fn == "PACK_MANIFEST.md": continue
+                ents.append({"path": fn, "sha256": hashlib.sha256(zf.read(fn)).hexdigest()})
+        m = "# Pre-submission pack\n| path | role | sha256 |\n|------|------|--------|\n"
+        for e in ents: m += f"| {e['path']} | deliverable | {e['sha256']} |\n"
+        m += "| PACK_MANIFEST.md | pack_manifest | self_excluded |\n"
+        with zipfile.ZipFile(str(tmp_zp), "a", zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr("PACK_MANIFEST.md", m)
+        import shutil
+        shutil.move(str(tmp_zp), str(zip_path))
+
     # 5. Run agent-acceptance workflow closure validator (SD-01/02/03)
     validator_script = ROOT.parent / "agent-acceptance" / "scripts" / "validate_workflow_closure.py"
     if not validator_script.exists():
@@ -492,10 +514,50 @@ def execute_submission_dry_run(project_dir: Path = None) -> StageResult:
 
 
 def execute_closure(project_dir: Path = None) -> StageResult:
-    """Stage 6: Generate FLOW_OUTCOME and closure report via framework."""
+    """Stage 6: Rebuild evidence pack (include post-build files) + generate FLOW_OUTCOME + closure."""
     result = StageResult(stage_id="closure")
     target = project_dir or RUN_DIR
     ensure_dir(target / "closure")
+
+    # Rebuild evidence ZIP to include files generated after build_evidence_pack
+    # (e.g., WORKFLOW_CLOSURE_VALIDATION.yaml from pre_submission_check)
+    # Then rebuild manifest with all files
+    zip_path = target / "evidence" / "ref-paper-review-pack.zip"
+    if zip_path.exists():
+        extra_files = []
+        for f in (target / "evidence").iterdir():
+            if f.is_file() and f.suffix != ".zip" and f.name != "PACK_MANIFEST.md":
+                extra_files.append(f)
+
+        if extra_files:
+            # Extract all files, add extras, rebuild ZIP + manifest
+            tmp_zp = zip_path.with_suffix(".tmp.zip")
+            old_files = {}
+            with zipfile.ZipFile(str(zip_path), "r") as zf:
+                for n in zf.namelist():
+                    if n != "PACK_MANIFEST.md":
+                        old_files[n] = zf.read(n)
+            with zipfile.ZipFile(str(tmp_zp), "w", zipfile.ZIP_DEFLATED) as zf:
+                for name, content in old_files.items():
+                    zf.writestr(name, content)
+                for f in extra_files:
+                    rel = f"evidence/{f.name}"
+                    if rel not in old_files:
+                        zf.writestr(rel, f.read_text(encoding="utf-8"))
+            # Rebuild manifest
+            entries = []
+            with zipfile.ZipFile(str(tmp_zp), "r") as zf:
+                for fn in sorted(zf.namelist()):
+                    if fn == "PACK_MANIFEST.md": continue
+                    h = hashlib.sha256(zf.read(fn)).hexdigest()
+                    entries.append({"path": fn, "role": "deliverable", "sha256": h})
+            m = "# Evidence Pack - Reference Paper Review\n| path | role | sha256 |\n|------|------|--------|\n"
+            for e in entries: m += f"| {e['path']} | {e['role']} | {e['sha256']} |\n"
+            m += "| PACK_MANIFEST.md | pack_manifest | self_excluded |\n"
+            with zipfile.ZipFile(str(tmp_zp), "a", zipfile.ZIP_DEFLATED) as zf:
+                zf.writestr("PACK_MANIFEST.md", m)
+            import shutil
+            shutil.move(str(tmp_zp), str(zip_path))
 
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
