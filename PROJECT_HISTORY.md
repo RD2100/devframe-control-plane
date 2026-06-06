@@ -443,3 +443,5 @@ rationale: 简述
 2. 附带简要引导提示，要求新对话阅读该文件
 3. 捕获回复并验证 `handoff_understood=yes`
 4. 若 `handoff_verified=false`，必须 fail-closed
+
+END_OF_PROJECT_HISTORY
