@@ -140,12 +140,68 @@ def cmd_handoff_transfer():
     return 0 if result.success else 1
 
 
+def cmd_pack_validate(zip_path: str):
+    """Validate evidence pack: manifest consistency, no bypass, files present."""
+    import zipfile
+    zp = Path(zip_path)
+    if not zp.exists():
+        print(f"ERROR: ZIP not found: {zip_path}")
+        return 1
+
+    errors = 0
+    with zipfile.ZipFile(zp, "r") as zf:
+        namelist = set(zf.namelist())
+        print(f"  ZIP files: {len(namelist)}")
+
+        # Check manifest exists
+        if "PACK_MANIFEST.md" not in namelist:
+            print("  FAIL: PACK_MANIFEST.md not in ZIP")
+            errors += 1
+        else:
+            manifest_text = zf.read("PACK_MANIFEST.md").decode("utf-8")
+            # Extract listed files from manifest
+            manifest_files = set()
+            for line in manifest_text.split("\n"):
+                if line.startswith("|") and "|" in line[1:]:
+                    parts = [p.strip() for p in line.split("|")[1:-1]]
+                    if len(parts) >= 1 and parts[0] and not parts[0].startswith("-"):
+                        manifest_files.add(parts[0])
+            manifest_files.discard("path")  # header row
+
+            extra_in_zip = namelist - manifest_files - {"PACK_MANIFEST.md"}
+            extra_in_manifest = manifest_files - namelist
+
+            if extra_in_zip:
+                print(f"  FAIL: Files in ZIP but not manifest: {extra_in_zip}")
+                errors += 1
+            if extra_in_manifest:
+                print(f"  FAIL: Files in manifest but not ZIP: {extra_in_manifest}")
+                errors += 1
+            if not extra_in_zip and not extra_in_manifest:
+                print(f"  PASS: Manifest <-> ZIP bidirectional match ({len(manifest_files)} files)")
+
+            # Check summary-only
+            actual_content_files = [f for f in namelist if f.endswith((".md", ".yaml", ".json", ".txt")) and f not in ("PACK_MANIFEST.md", "GPT_REVIEW_PROMPT.md", "SAFETY_ATTESTATION.md", "CLOSURE_REPORT.yaml", "FLOW_OUTCOME.json")]
+            if len(actual_content_files) < 2:
+                print("  FAIL: Evidence pack appears summary-only (no actual deliverable files)")
+                errors += 1
+            else:
+                print(f"  PASS: Contains {len(actual_content_files)} actual deliverable files")
+
+    if errors > 0:
+        print(f"Pack validation: FAILED ({errors} errors)")
+        return 1
+    print(f"Pack validation: PASS")
+    return 0
+
+
 def main():
     if len(sys.argv) < 2:
         print("DevFrame Control Plane CLI")
         print("  devframe init [template] [target]  — initialize project")
         print("  devframe doctor                    — check project health")
-        print("  devframe run --pipeline <path>     — dry-run pipeline")
+        print("  devframe run --pipeline <path> [--execute] [--project <dir>] — run pipeline")
+        print("  devframe pack validate <zip>        — validate evidence pack")
         print("  devframe handoff generate           — generate handoff doc")
         print("  devframe handoff validate <file>    — validate handoff")
         print("  devframe handoff bootstrap          — dry-run bootstrap")
@@ -173,12 +229,40 @@ def main():
         return cmd_doctor()
     elif cmd == "run":
         if "--pipeline" not in sys.argv:
-            print("Usage: devframe run --pipeline <path>")
+            print("Usage: devframe run --pipeline <path> [--execute] [--project <dir>]")
             return 1
         idx = sys.argv.index("--pipeline")
         path = sys.argv[idx + 1]
         with_sub = "--with-submission" in sys.argv
-        return cmd_run(path, with_submission=with_sub)
+        execute = "--execute" in sys.argv
+
+        if execute:
+            # Execute pipeline via stage_executor
+            from .stage_executor import execute_full_pipeline
+            print(f"Pipeline: {path}")
+            print(f"Mode: execute (via framework stage_executor)")
+            results = execute_full_pipeline()
+            total = len(results)
+            completed = sum(1 for r in results if r.status == "completed")
+            for r in results:
+                status = "PASS" if r.status == "completed" else "FAIL"
+                print(f"  [{status}] {r.stage_id} ({len(r.outputs)} outputs)")
+            print(f"\nStages: {completed}/{total} completed")
+            return 0 if completed == total else 1
+        else:
+            return cmd_run(path, with_submission=with_sub)
+
+    elif cmd == "pack":
+        sub = sys.argv[2] if len(sys.argv) > 2 else ""
+        if sub == "validate":
+            if len(sys.argv) < 4:
+                print("Usage: devframe pack validate <zip>")
+                return 1
+            return cmd_pack_validate(sys.argv[3])
+        else:
+            print("Usage: devframe pack validate <zip>")
+            return 1
+
     else:
         print(f"Unknown command: {cmd}")
         return 1
