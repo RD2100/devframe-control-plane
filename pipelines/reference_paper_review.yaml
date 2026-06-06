@@ -32,6 +32,9 @@ stages:
     input_source: synthetic_fixture
     generates:
       - SYNTHETIC_PAPER.md
+      - PAPER_TASK_INPUT.yaml
+      - PRIVACY_ATTESTATION.yaml
+      - REDACTION_REPORT.yaml
 
   - id: paper_review
     type: execution
@@ -52,6 +55,7 @@ stages:
       - REVIEW_REPORT.md
       - CITATION_CHECK_RESULT.yaml
       - DIMENSION_SCORES.yaml
+      - PAPER_TASK_OUTPUT.yaml
 
   - id: build_evidence_pack
     type: execution
@@ -72,6 +76,8 @@ stages:
       - manifest_zip_consistency
       - no_summary_only_pack
       - pipeline_provenance_present
+      - paper_task_directory_validator
+      - paper_task_evidence_pack_validator
 
   - id: submission_dry_run
     type: submission
@@ -91,7 +97,13 @@ stages:
         - CITATION_CHECK_RESULT.yaml
         - DIMENSION_SCORES.yaml
         - PACK_MANIFEST.md
+        - PAPER_TASK_INPUT.yaml
+        - PAPER_TASK_OUTPUT.yaml
+        - PRIVACY_ATTESTATION.yaml
+        - REDACTION_REPORT.yaml
         - PRE_SUBMISSION_CHECK.yaml
+        - PAPER_TASK_VALIDATION.directory.json
+        - PAPER_TASK_VALIDATION.zip.json
         - SUBMISSION_RESULT.json
         - FLOW_OUTCOME.json
         - TEST_OUTPUT.txt

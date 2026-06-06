@@ -22,6 +22,7 @@ PIPELINE_RUN_ID = f"ref-paper-{uuid.uuid4().hex[:8]}"
 import tempfile
 RUN_DIR = Path(tempfile.gettempdir()) / "ref-paper-test"
 ROOT = Path(__file__).resolve().parent.parent
+PAPER_TASK_DIRNAME = "paper_task"
 
 
 @dataclass
@@ -38,6 +39,45 @@ def sha256(text: str) -> str:
 
 def ensure_dir(path: Path):
     path.mkdir(parents=True, exist_ok=True)
+
+
+def paper_task_dir(target: Path) -> Path:
+    return target / PAPER_TASK_DIRNAME
+
+
+def write_pre_submission_check(path: Path, check_result: dict) -> None:
+    yaml_lines = [f"# Pre-Submission Check", f"pipeline_run_id: {PIPELINE_RUN_ID}", ""]
+    for k, v in check_result.items():
+        if isinstance(v, list):
+            yaml_lines.append(f"{k}:")
+            for item in v:
+                yaml_lines.append(f"  - {item}")
+        else:
+            yaml_lines.append(f"{k}: {v}")
+    path.write_text("\n".join(yaml_lines), encoding="utf-8")
+
+
+def run_paper_task_validator(source: Path, output_path: Path) -> tuple[bool, str | None]:
+    validator_script = ROOT.parent / "agent-acceptance" / "scripts" / "validate_paper_task.py"
+    if not validator_script.exists():
+        output_path.write_text("paper task validator not found\n", encoding="utf-8")
+        return False, "paper_task_validator_not_found"
+
+    import subprocess
+
+    try:
+        result = subprocess.run(
+            [sys.executable, str(validator_script), str(source), "--json-output", str(output_path)],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    except Exception as exc:
+        output_path.write_text(f"paper task validator error: {exc}\n", encoding="utf-8")
+        return False, "paper_task_validator_error"
+    if not output_path.exists():
+        output_path.write_text(result.stdout + "\n" + result.stderr, encoding="utf-8")
+    return (result.returncode == 0, None if result.returncode == 0 else "paper_task_validator_failed")
 
 
 def execute_project_init(project_dir: Path = None) -> StageResult:
@@ -64,6 +104,7 @@ def execute_load_input(project_dir: Path = None) -> StageResult:
     target = project_dir or RUN_DIR
     ensure_dir(target / "input")
     ensure_dir(target / "run")
+    ensure_dir(paper_task_dir(target))
 
     synthetic_paper = """# 数字技术对课堂教学互动的影响——一项基于混合方法的实证研究
 
@@ -127,11 +168,57 @@ references:
     (target / "input" / "SYNTHETIC_REFERENCES.yaml").write_text(synthetic_refs, encoding="utf-8")
     (target / "run" / "PIPELINE_RUN_ID.txt").write_text(PIPELINE_RUN_ID, encoding="utf-8")
 
+    paper_input = f"""# PAPER-A2/PAPER-A3 synthetic paper task input
+task_id: "{PIPELINE_RUN_ID}"
+task_type: "cssci_review"
+paper_data_classification: "synthetic"
+user_authorization: "synthetic"
+input_materials: ["synthetic_paper_title", "synthetic_paper_abstract", "synthetic_paper_outline"]
+privacy_constraints: ["no_real_paper", "no_user_identity", "no_external_upload"]
+memory_policy: "redacted_workflow_lesson_only"
+expected_outputs: ["overall_assessment", "main_contribution", "major_problems", "revision_priorities", "publishability_judgment"]
+"""
+    privacy_attestation = f"""# PAPER-A2/PAPER-A3 privacy attestation
+task_id: "{PIPELINE_RUN_ID}"
+contains_real_paper_full_text: false
+contains_user_private_text: false
+contains_raw_transcript: false
+contains_memory_write: false
+contains_external_upload: false
+redaction_applied: true
+manual_review_required: false
+memory_write_policy: "redacted_workflow_lesson_only"
+safety:
+  live_cdp_enabled: false
+  cookies_or_session_read: false
+  historical_evidence_modified: false
+  gpt_review_forged: false
+"""
+    redaction_report = f"""# PAPER-A2/PAPER-A3 redaction report
+task_id: "{PIPELINE_RUN_ID}"
+redaction_applied: true
+redaction_type: "synthetic_only"
+original_content_type: "synthetic_paper_metadata"
+methods_applied: ["no_real_paper_used", "all_content_synthetic", "no_user_identity"]
+verification_passed: true
+contains_real_paper_full_text: false
+contains_user_private_text: false
+contains_raw_transcript: false
+manual_review_required: false
+notes: "All content is synthetic. No real paper text or user data was processed."
+"""
+    (paper_task_dir(target) / "PAPER_TASK_INPUT.yaml").write_text(paper_input, encoding="utf-8")
+    (paper_task_dir(target) / "PRIVACY_ATTESTATION.yaml").write_text(privacy_attestation, encoding="utf-8")
+    (paper_task_dir(target) / "REDACTION_REPORT.yaml").write_text(redaction_report, encoding="utf-8")
+
     result.status = "completed"
     result.outputs = [
         str(target / "input" / "SYNTHETIC_PAPER.md"),
         str(target / "input" / "SYNTHETIC_REFERENCES.yaml"),
         str(target / "run" / "PIPELINE_RUN_ID.txt"),
+        str(paper_task_dir(target) / "PAPER_TASK_INPUT.yaml"),
+        str(paper_task_dir(target) / "PRIVACY_ATTESTATION.yaml"),
+        str(paper_task_dir(target) / "REDACTION_REPORT.yaml"),
     ]
     return result
 
@@ -141,6 +228,7 @@ def execute_paper_review(project_dir: Path = None) -> StageResult:
     result = StageResult(stage_id="paper_review")
     target = project_dir or RUN_DIR
     ensure_dir(target / "review")
+    ensure_dir(paper_task_dir(target))
 
     dimensions = {
         "problem_awareness": {"score": "良好", "rationale": "问题意识明确，从'技术有效性的条件性'切入有现实针对性。研究问题聚焦数字技术工具对互动质量的影响，但调节变量（教师整合能力）的引入可以更早。"},
@@ -242,12 +330,34 @@ issues:
 """
     (target / "review" / "REVIEW_ISSUES.yaml").write_text(issues, encoding="utf-8")
 
+    paper_output = f"""# PAPER-A2/PAPER-A3 synthetic paper task output
+task_id: "{PIPELINE_RUN_ID}"
+task_type: "cssci_review"
+output_summary: "Synthetic CSSCI review generated privacy-safe findings for a synthetic-only paper task."
+findings:
+  - dimension: "problem_awareness"
+    score: "good"
+  - dimension: "theoretical_contribution"
+    score: "medium"
+  - dimension: "literature_dialogue"
+    score: "needs_revision"
+evidence_basis: "Based on synthetic paper metadata, synthetic abstract, and synthetic outline only."
+privacy_redaction_status: "full"
+manual_review_required: false
+limitations: ["synthetic_only", "no_real_database_check", "no_live_gpt_review"]
+contains_real_paper_full_text: false
+contains_unredacted_excerpt: false
+contains_user_identity: false
+"""
+    (paper_task_dir(target) / "PAPER_TASK_OUTPUT.yaml").write_text(paper_output, encoding="utf-8")
+
     result.status = "completed"
     result.outputs = [
         str(target / "review" / "REVIEW_REPORT.md"),
         str(target / "review" / "DIMENSION_SCORES.yaml"),
         str(target / "review" / "CITATION_CHECK_RESULT.yaml"),
         str(target / "review" / "REVIEW_ISSUES.yaml"),
+        str(paper_task_dir(target) / "PAPER_TASK_OUTPUT.yaml"),
     ]
     return result
 
@@ -265,7 +375,7 @@ def execute_build_evidence_pack(project_dir: Path = None) -> StageResult:
 
     # Collect all actual deliverable files
     deliverables = []
-    for subdir in ["input", "review"]:
+    for subdir in ["input", "review", PAPER_TASK_DIRNAME]:
         d = target / subdir
         if d.exists():
             for f in d.iterdir():
@@ -281,7 +391,10 @@ def execute_build_evidence_pack(project_dir: Path = None) -> StageResult:
             rel = str(f.relative_to(target)).replace("\\", "/")
             h = sha256(f.read_text(encoding="utf-8"))
             zf.write(f, rel)
-            role = "synthetic_paper" if "PAPER" in rel else "review_output"
+            if rel.startswith(f"{PAPER_TASK_DIRNAME}/"):
+                role = "paper_task_protocol"
+            else:
+                role = "synthetic_paper" if "PAPER" in rel else "review_output"
             file_entries.append({"path": rel, "role": role, "sha256": h})
 
     # Build manifest text directly (no index juggling)
@@ -410,15 +523,7 @@ def execute_pre_submission_check(project_dir: Path = None) -> StageResult:
         check_result["blocking_issues"].append("summary_only_pack")
 
     check_path = target / "evidence" / "PRE_SUBMISSION_CHECK.yaml"
-    yaml_lines = [f"# Pre-Submission Check", f"pipeline_run_id: {PIPELINE_RUN_ID}", ""]
-    for k, v in check_result.items():
-        if isinstance(v, list):
-            yaml_lines.append(f"{k}:")
-            for item in v:
-                yaml_lines.append(f"  - {item}")
-        else:
-            yaml_lines.append(f"{k}: {v}")
-    check_path.write_text("\n".join(yaml_lines), encoding="utf-8")
+    write_pre_submission_check(check_path, check_result)
 
     # 4.5 Rebuild evidence pack to include any post-build files + fix manifest
     if zip_path.exists():
@@ -442,6 +547,21 @@ def execute_pre_submission_check(project_dir: Path = None) -> StageResult:
         import shutil
         shutil.move(str(tmp_zp), str(zip_path))
 
+    # 4.6 Run PAPER-A3 paper task validator on both protocol files and evidence ZIP.
+    paper_dir = paper_task_dir(target)
+    paper_dir_output = target / "evidence" / "PAPER_TASK_VALIDATION.directory.json"
+    paper_zip_output = target / "evidence" / "PAPER_TASK_VALIDATION.zip.json"
+    paper_dir_ok, paper_dir_issue = run_paper_task_validator(paper_dir, paper_dir_output)
+    paper_zip_ok, paper_zip_issue = run_paper_task_validator(zip_path, paper_zip_output)
+    check_result["paper_task_directory_validation"] = "pass" if paper_dir_ok else "fail"
+    check_result["paper_task_evidence_pack_validation"] = "pass" if paper_zip_ok else "fail"
+    if paper_dir_issue:
+        check_result["blocking_issues"].append(f"paper_task_directory_{paper_dir_issue}")
+        check_result["result"] = "fail"
+    if paper_zip_issue:
+        check_result["blocking_issues"].append(f"paper_task_evidence_pack_{paper_zip_issue}")
+        check_result["result"] = "fail"
+
     # 5. Run agent-acceptance workflow closure validator (SD-01/02/03)
     validator_script = ROOT.parent / "agent-acceptance" / "scripts" / "validate_workflow_closure.py"
     if not validator_script.exists():
@@ -458,13 +578,15 @@ def execute_pre_submission_check(project_dir: Path = None) -> StageResult:
             check_result["blocking_issues"].append("workflow_closure_validator_failed")
             check_result["result"] = "fail"
 
+    write_pre_submission_check(check_path, check_result)
+
     if not check_result["blocking_issues"]:
         result.status = "completed"
     else:
         result.status = "failed"
         result.errors = check_result["blocking_issues"]
 
-    result.outputs = [str(check_path)]
+    result.outputs = [str(check_path), str(paper_dir_output), str(paper_zip_output)]
     return result
 
 

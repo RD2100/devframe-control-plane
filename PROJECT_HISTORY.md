@@ -21,6 +21,21 @@
 
 ---
 
+## PAPER-B2 Ready For Review Note (2026-06-06)
+
+Status: ready_for_review, not accepted, not closed.
+
+Web GPT next-plan run `paper-b2-next-plan-v1` authorized a minimal
+synthetic-only PAPER-B2 workflow in `devframe-control-plane`. The local
+implementation adds a PAPER-B2 synthetic workflow fixture and real stage-path
+tests proving a positive validator-backed path and a negative fail-closed path.
+
+Safety boundaries: no real paper full text, no private user text, no raw
+transcript, no memory write containing paper content, no external upload, no
+live CDP for implementation, and no writes to dirty `agent-acceptance` baseline
+files. This note is not a closure claim; PAPER-B2 still requires evidence pack
+review and GPT accepted before it can be marked closed.
+
 ## 1. 项目定位
 
 ### 1.1 项目名称
