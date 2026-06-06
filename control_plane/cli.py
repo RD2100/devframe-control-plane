@@ -79,6 +79,67 @@ def cmd_handoff_bootstrap(target: str = "new-conversation", dry_run: bool = True
     return 0 if result.handoff_verified else 1
 
 
+def cmd_handoff_transfer():
+    """Transfer handoff document. Dry-run by default; --live requires safety flag."""
+    import argparse
+
+    parser = argparse.ArgumentParser(prog="devframe handoff transfer")
+    parser.add_argument("--to", dest="target_url", default=None,
+                        help="Target conversation URL or ID")
+    parser.add_argument("--file", dest="handoff_file", default="HANDOFF.md",
+                        help="Handoff file to transfer (default: HANDOFF.md)")
+    parser.add_argument("--live", dest="live", action="store_true", default=False,
+                        help="Execute live CDP transfer (default: dry-run)")
+    parser.add_argument("--safety-flag", dest="safety_flag", action="store_true", default=False,
+                        help="Required for live mode")
+
+    # Reconstruct args from sys.argv after 'transfer'
+    args_list = sys.argv[sys.argv.index("transfer") + 1:]
+    try:
+        parsed = parser.parse_args(args_list)
+    except SystemExit:
+        return 1
+
+    target = parsed.target_url or "new-conversation"
+    handoff_file = parsed.handoff_file
+
+    if not parsed.live:
+        # Dry-run
+        print(f"Handoff transfer (dry-run): would upload {handoff_file} to {target}")
+        print("  Step 1: Verify HANDOFF.md exists")
+        print("  Step 2: CDP connect and navigate to target")
+        print("  Step 3: Upload HANDOFF.md as .md file attachment")
+        print("  Step 4: Include bootstrap prompt")
+        print("  Step 5: Click send")
+        print("  Step 6: Capture reply and verify handoff_verified")
+        return 0
+
+    # Live mode
+    if not parsed.safety_flag:
+        print("ERROR: --safety-flag required for live CDP transfer")
+        return 1
+
+    from .playwright_bridge import BridgeConfig, BridgeMode, submit_via_bridge, health_check as bridge_health
+    from .submission_result import SubmissionRequest
+
+    config = BridgeConfig(
+        mode=BridgeMode.LIVE,
+        safety_flag=True,
+        conversation_id=target,
+    )
+
+    ok, reason = bridge_health(config)
+    if not ok:
+        print(f"ERROR: Health check failed: {reason}")
+        return 1
+
+    req = SubmissionRequest(review_run_id=handoff_file)
+    result = submit_via_bridge(req, config)
+    print(f"Transfer result: success={result.success}, mode={result.mode}")
+    print(f"Detail: {result.detail}")
+    return 0 if result.success else 1
+
+
 def main():
     if len(sys.argv) < 2:
         print("DevFrame Control Plane CLI")
@@ -88,7 +149,7 @@ def main():
         print("  devframe handoff generate           — generate handoff doc")
         print("  devframe handoff validate <file>    — validate handoff")
         print("  devframe handoff bootstrap          — dry-run bootstrap")
-        print("  devframe handoff transfer --to <url> — transfer handoff as file attachment")
+        print("  devframe handoff transfer --to <url> [--live --safety-flag] — transfer handoff")
         return 0
     cmd = sys.argv[1]
     if cmd == "handoff":
@@ -100,16 +161,7 @@ def main():
         elif sub == "bootstrap":
             return cmd_handoff_bootstrap()
         elif sub == "transfer":
-            # dry-run by default — prints what would happen
-            to_url = sys.argv[3] if len(sys.argv) > 3 else "new-conversation"
-            print(f"Handoff transfer (dry-run): would upload HANDOFF.md to {to_url}")
-            print("  Step 1: Verify HANDOFF.md exists")
-            print("  Step 2: CDP connect and navigate to target")
-            print("  Step 3: Upload HANDOFF.md as .md file attachment")
-            print("  Step 4: Include bootstrap prompt")
-            print("  Step 5: Click send")
-            print("  Step 6: Capture reply and verify handoff_verified")
-            return 0
+            return cmd_handoff_transfer()
         else:
             print(f"Unknown handoff subcommand: {sub}")
             return 1

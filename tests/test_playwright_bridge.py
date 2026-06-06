@@ -49,13 +49,44 @@ def test_dry_run_submit_returns_success():
     assert result.mode == "dry_run"
 
 
-def test_live_placeholder_returns_not_implemented():
+def test_live_with_unreachable_cdp_returns_error():
+    """Live mode with unreachable CDP should return a proper error, not placeholder."""
     req = SubmissionRequest(review_run_id="test")
     cfg = make_config(BridgeMode.LIVE)
     cfg.safety_flag = True
-    cfg.conversation_id = "6a223019"
+    cfg.conversation_id = "https://chatgpt.com/c/6a223019"
+    cfg.cdp_port = 19999  # non-existent port
     result = submit_via_bridge(req, cfg)
-    assert "not yet implemented" in result.detail.lower() or result.success is False
+    assert result.success is False
+    assert result.mode == "live"
+    assert "not yet implemented" not in result.detail.lower()
+
+
+def test_live_missing_handoff_file_returns_error():
+    """Live mode without HANDOFF.md should return file-not-found error."""
+    req = SubmissionRequest(review_run_id="/nonexistent/NO_SUCH_FILE.md")
+    cfg = make_config(BridgeMode.LIVE)
+    cfg.safety_flag = True
+    cfg.conversation_id = "https://chatgpt.com/c/test"
+    cfg.cdp_port = 19999
+    result = submit_via_bridge(req, cfg)
+    # Should fail fast on missing file, not try CDP
+    assert result.success is False
+
+
+def test_live_without_playwright_returns_error():
+    """Live mode without playwright installed should fail at health check."""
+    cfg = make_config(BridgeMode.LIVE)
+    cfg.safety_flag = True
+    cfg.conversation_id = "6a223019"
+    req = SubmissionRequest(review_run_id="HANDOFF.md")
+    ok, reason = health_check(cfg)
+    if "playwright_not_installed" in reason:
+        # Expected when playwright is absent
+        assert ok is False
+    else:
+        # playwright is installed, health check should pass
+        assert ok is True
 
 
 def test_safety_attestation_no_state_mutation():
