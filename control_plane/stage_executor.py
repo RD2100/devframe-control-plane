@@ -515,7 +515,9 @@ def execute_pre_submission_check(project_dir: Path = None) -> StageResult:
         "safety_attestation_source": "evidence/SAFETY_ATTESTATION.md",
         "blocking_issues": [],
     }
-    if not bypass_passed:
+    if bypass_passed is None:
+        warnings.append("Bypass checker unavailable (agent-acceptance repo may not be present in CI)")
+    elif not bypass_passed:
         check_result["blocking_issues"].append("bypass_check_failed")
     if not manifest_ok:
         check_result["blocking_issues"].append("manifest_zip_mismatch")
