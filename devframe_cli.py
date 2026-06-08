@@ -20,6 +20,7 @@ def main():
         registry_main()
     elif cmd == "run":
         if len(sys.argv) < 3: print("Usage: devframe run <workflow>"); sys.exit(1)
+        sys.argv = ["workflow_registry.py", sys.argv[2]]
         registry_main()
     elif cmd == "smoke":
         import subprocess

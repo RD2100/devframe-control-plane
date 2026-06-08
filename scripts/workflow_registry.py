@@ -19,7 +19,7 @@ def main():
             for name, info in sorted(REGISTRY.items()):
                 print(f"  {name}: {info['desc']}")
         elif cmd in REGISTRY:
-            info = REGISTRY[name]
+            info = REGISTRY[cmd]
             repo = Path(info.get("repo", str(CTRL)))
             import subprocess
             r = subprocess.run([sys.executable, info["script"]], cwd=str(repo))

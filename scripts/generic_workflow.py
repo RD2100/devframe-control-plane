@@ -25,11 +25,10 @@ def main():
         results[name] = {"exit": r.returncode, "tail": (r.stdout or r.stderr).strip().split("\n")[-1]}
         print(f"  -> exit={r.returncode}")
 
-    # control-plane has 3 pre-existing failures (known, not new)
-    KNOWN_FAILURES = {"verify_control": 1}
-    all_ok = all(v["exit"] == 0 for k, v in results.items() if k not in KNOWN_FAILURES)
+    # All repos should pass (control-plane: 72 PASS as of 2026-06-08)
+    all_ok = all(v["exit"] == 0 for v in results.values())
     for k, v in results.items():
-        status = "PASS" if v["exit"] == 0 else ("KNOWN_ISSUES" if k in KNOWN_FAILURES else "FAIL")
+        status = "PASS" if v["exit"] == 0 else "FAIL"
         v["status"] = status
     report = {"workflow": "generic-workflow-v1", "timestamp": datetime.now(timezone.utc).isoformat(), "overall": "PASS" if all_ok else "FAIL", "stages": results}
     print(f"\n{'='*40}\nWORKFLOW: {'PASS' if all_ok else 'FAIL'}")
